@@ -2,13 +2,12 @@
 
 ## Auto-Cycling Webpage Display
 
-A webpage that automatically cycles through a list of other webpages. It displays the first page, and if there is no activity (mouse/keyboard) for 5 minutes, it automatically loads the next page.
+A webpage that automatically cycles through a list of other webpages. It displays the first page and automatically loads the next page after 5 minutes.
 
 ### Features
 
-- **Auto-Cycling**: Automatically switches to the next page after 5 minutes of inactivity
-- **Inactivity Detection**: Monitors mouse movement, keyboard input, scroll, and touch events
-- **Timer Reset**: Any user activity resets the 5-minute countdown
+- **Auto-Cycling**: Automatically switches to the next page after 5 minutes
+- **Pause/Resume Control**: Pause button to stop and resume the countdown timer
 - **Manual Navigation**: Previous and Next buttons for manual control
 - **Visual Feedback**: Live countdown timer and page counter
 

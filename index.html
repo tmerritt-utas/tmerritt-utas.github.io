@@ -103,6 +103,7 @@
             <div id="current-page">Page: <span id="page-number">1</span> of <span id="total-pages">0</span></div>
             <div id="timer">Next in: <span id="countdown">5:00</span></div>
             <div class="controls">
+                <button id="pause-btn" onclick="cycleManager.togglePause()">Pause</button>
                 <button id="prev-btn" onclick="cycleManager.goToPrevious()">Previous</button>
                 <button id="next-btn" onclick="cycleManager.goToNext()">Next</button>
             </div>
@@ -130,12 +131,14 @@
                 this.inactivityTimer = null;
                 this.countdownTimer = null;
                 this.remainingTime = this.inactivityTimeout;
+                this.isPaused = false;
                 
                 this.iframe = document.getElementById('content-frame');
                 this.pageNumberEl = document.getElementById('page-number');
                 this.totalPagesEl = document.getElementById('total-pages');
                 this.countdownEl = document.getElementById('countdown');
                 this.loadingEl = document.getElementById('loading');
+                this.pauseBtn = document.getElementById('pause-btn');
                 
                 this.init();
             }
@@ -147,53 +150,11 @@
                 // Load the first page
                 this.loadPage(0);
                 
-                // Set up activity listeners
-                this.setupActivityListeners();
-                
-                // Start the inactivity timer
-                this.resetInactivityTimer();
+                // Start the timer (no activity listeners needed)
+                this.startTimer();
             }
             
-            setupActivityListeners() {
-                // Listen for mouse and keyboard activity on the parent document
-                const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-                events.forEach(event => {
-                    document.addEventListener(event, () => {
-                        this.resetInactivityTimer();
-                    }, true);
-                });
-
-                // Listen for visibility/focus changes (user switched tab or window)
-                document.addEventListener('visibilitychange', () => {
-                    if (!document.hidden) this.resetInactivityTimer();
-                });
-                window.addEventListener('focus', () => this.resetInactivityTimer());
-                window.addEventListener('blur', () => this.resetInactivityTimer());
-
-                // Add listeners on the iframe element itself.
-                // Many browsers will fire focus/mouseenter/pointerdown on the iframe element when the user interacts with
-                // the embedded content (even if it's cross-origin). These are reliable for detecting user activity.
-                const iframeEvents = ['mouseenter', 'mousemove', 'pointerdown', 'pointerup', 'wheel', 'touchstart', 'focus', 'blur'];
-                iframeEvents.forEach(ev => {
-                    this.iframe.addEventListener(ev, () => {
-                        this.resetInactivityTimer();
-                    }, true);
-                });
-
-                // If the iframe is same-origin, we can also attach listeners directly to its document (best coverage).
-                // For cross-origin iframes this will throw; catch and ignore that error.
-                this.iframe.addEventListener('load', () => {
-                    try {
-                        const doc = this.iframe.contentDocument || this.iframe.contentWindow.document;
-                        const childEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
-                        childEvents.forEach(e => doc.addEventListener(e, () => this.resetInactivityTimer(), true));
-                    } catch (err) {
-                        // Cross-origin iframe, cannot reach inside. Rely on the iframe element events above or postMessage (see notes).
-                    }
-                });
-            }
-            
-            resetInactivityTimer() {
+            startTimer() {
                 // Clear existing timers
                 if (this.inactivityTimer) {
                     clearTimeout(this.inactivityTimer);
@@ -206,19 +167,39 @@
                 this.remainingTime = this.inactivityTimeout;
                 this.updateCountdown();
                 
-                // Start new inactivity timer
+                // Start new timer
                 this.inactivityTimer = setTimeout(() => {
                     this.goToNext();
                 }, this.inactivityTimeout);
                 
                 // Start countdown display
                 this.countdownTimer = setInterval(() => {
-                    this.remainingTime -= 1000;
-                    if (this.remainingTime <= 0) {
-                        this.remainingTime = 0;
+                    if (!this.isPaused) {
+                        this.remainingTime -= 1000;
+                        if (this.remainingTime <= 0) {
+                            this.remainingTime = 0;
+                        }
+                        this.updateCountdown();
                     }
-                    this.updateCountdown();
                 }, 1000);
+            }
+            
+            togglePause() {
+                this.isPaused = !this.isPaused;
+                
+                if (this.isPaused) {
+                    // Pause the timer
+                    if (this.inactivityTimer) {
+                        clearTimeout(this.inactivityTimer);
+                    }
+                    this.pauseBtn.textContent = 'Resume';
+                } else {
+                    // Resume the timer
+                    this.inactivityTimer = setTimeout(() => {
+                        this.goToNext();
+                    }, this.remainingTime);
+                    this.pauseBtn.textContent = 'Pause';
+                }
             }
             
             updateCountdown() {
@@ -242,8 +223,8 @@
                     this.loadingEl.style.display = 'none';
                 }, 1000);
                 
-                // Reset the inactivity timer
-                this.resetInactivityTimer();
+                // Start the timer
+                this.startTimer();
             }
             
             goToNext() {
