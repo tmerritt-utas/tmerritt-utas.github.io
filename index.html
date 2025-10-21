@@ -154,13 +154,41 @@
             }
             
             setupActivityListeners() {
-                // Listen for mouse and keyboard activity
+                // Listen for mouse and keyboard activity on the parent document
                 const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
-                
                 events.forEach(event => {
                     document.addEventListener(event, () => {
                         this.resetInactivityTimer();
                     }, true);
+                });
+
+                // Listen for visibility/focus changes (user switched tab or window)
+                document.addEventListener('visibilitychange', () => {
+                    if (!document.hidden) this.resetInactivityTimer();
+                });
+                window.addEventListener('focus', () => this.resetInactivityTimer());
+                window.addEventListener('blur', () => this.resetInactivityTimer());
+
+                // Add listeners on the iframe element itself.
+                // Many browsers will fire focus/mouseenter/pointerdown on the iframe element when the user interacts with
+                // the embedded content (even if it's cross-origin). These are reliable for detecting user activity.
+                const iframeEvents = ['mouseenter', 'mousemove', 'pointerdown', 'pointerup', 'wheel', 'touchstart', 'focus', 'blur'];
+                iframeEvents.forEach(ev => {
+                    this.iframe.addEventListener(ev, () => {
+                        this.resetInactivityTimer();
+                    }, true);
+                });
+
+                // If the iframe is same-origin, we can also attach listeners directly to its document (best coverage).
+                // For cross-origin iframes this will throw; catch and ignore that error.
+                this.iframe.addEventListener('load', () => {
+                    try {
+                        const doc = this.iframe.contentDocument || this.iframe.contentWindow.document;
+                        const childEvents = ['mousemove', 'mousedown', 'keydown', 'touchstart', 'scroll'];
+                        childEvents.forEach(e => doc.addEventListener(e, () => this.resetInactivityTimer(), true));
+                    } catch (err) {
+                        // Cross-origin iframe, cannot reach inside. Rely on the iframe element events above or postMessage (see notes).
+                    }
                 });
             }
             
