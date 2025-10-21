@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auto-Cycling Webpage Display</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+
+        #header {
+            background-color: #333;
+            color: white;
+            padding: 10px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        #header h1 {
+            font-size: 18px;
+            margin: 0;
+        }
+
+        #info {
+            display: flex;
+            gap: 20px;
+            font-size: 14px;
+        }
+
+        #current-page {
+            color: #4CAF50;
+        }
+
+        #timer {
+            color: #ff9800;
+        }
+
+        #iframe-container {
+            width: 100%;
+            height: calc(100vh - 50px);
+            position: relative;
+        }
+
+        #content-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: block;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: rgba(255, 255, 255, 0.9);
+            padding: 20px 40px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        button:active {
+            background-color: #3d8b40;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <h1>Auto-Cycling Webpage Display</h1>
+        <div id="info">
+            <div id="current-page">Page: <span id="page-number">1</span> of <span id="total-pages">0</span></div>
+            <div id="timer">Next in: <span id="countdown">5:00</span></div>
+            <div class="controls">
+                <button id="prev-btn" onclick="cycleManager.goToPrevious()">Previous</button>
+                <button id="next-btn" onclick="cycleManager.goToNext()">Next</button>
+            </div>
+        </div>
+    </div>
+    <div id="iframe-container">
+        <iframe id="content-frame" src="about:blank"></iframe>
+        <div id="loading">Loading...</div>
+    </div>
+
+    <script>
+        class PageCycleManager {
+            constructor() {
+                // List of URLs to cycle through
+                this.pages = [
+                    'https://www.example.com',
+                    'https://www.wikipedia.org',
+                    'https://www.github.com',
+                    'https://www.stackoverflow.com'
+                ];
+                
+                this.currentIndex = 0;
+                this.inactivityTimeout = 5 * 60 * 1000; // 5 minutes in milliseconds
+                this.inactivityTimer = null;
+                this.countdownTimer = null;
+                this.remainingTime = this.inactivityTimeout;
+                
+                this.iframe = document.getElementById('content-frame');
+                this.pageNumberEl = document.getElementById('page-number');
+                this.totalPagesEl = document.getElementById('total-pages');
+                this.countdownEl = document.getElementById('countdown');
+                this.loadingEl = document.getElementById('loading');
+                
+                this.init();
+            }
+            
+            init() {
+                // Update total pages display
+                this.totalPagesEl.textContent = this.pages.length;
+                
+                // Load the first page
+                this.loadPage(0);
+                
+                // Set up activity listeners
+                this.setupActivityListeners();
+                
+                // Start the inactivity timer
+                this.resetInactivityTimer();
+            }
+            
+            setupActivityListeners() {
+                // Listen for mouse and keyboard activity
+                const events = ['mousedown', 'mousemove', 'keydown', 'scroll', 'touchstart'];
+                
+                events.forEach(event => {
+                    document.addEventListener(event, () => {
+                        this.resetInactivityTimer();
+                    }, true);
+                });
+            }
+            
+            resetInactivityTimer() {
+                // Clear existing timers
+                if (this.inactivityTimer) {
+                    clearTimeout(this.inactivityTimer);
+                }
+                if (this.countdownTimer) {
+                    clearInterval(this.countdownTimer);
+                }
+                
+                // Reset remaining time
+                this.remainingTime = this.inactivityTimeout;
+                this.updateCountdown();
+                
+                // Start new inactivity timer
+                this.inactivityTimer = setTimeout(() => {
+                    this.goToNext();
+                }, this.inactivityTimeout);
+                
+                // Start countdown display
+                this.countdownTimer = setInterval(() => {
+                    this.remainingTime -= 1000;
+                    if (this.remainingTime <= 0) {
+                        this.remainingTime = 0;
+                    }
+                    this.updateCountdown();
+                }, 1000);
+            }
+            
+            updateCountdown() {
+                const minutes = Math.floor(this.remainingTime / 60000);
+                const seconds = Math.floor((this.remainingTime % 60000) / 1000);
+                this.countdownEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+            }
+            
+            loadPage(index) {
+                this.currentIndex = index;
+                this.pageNumberEl.textContent = index + 1;
+                
+                // Show loading indicator
+                this.loadingEl.style.display = 'block';
+                
+                // Load the page
+                this.iframe.src = this.pages[index];
+                
+                // Hide loading indicator after a short delay
+                setTimeout(() => {
+                    this.loadingEl.style.display = 'none';
+                }, 1000);
+                
+                // Reset the inactivity timer
+                this.resetInactivityTimer();
+            }
+            
+            goToNext() {
+                const nextIndex = (this.currentIndex + 1) % this.pages.length;
+                this.loadPage(nextIndex);
+            }
+            
+            goToPrevious() {
+                const prevIndex = (this.currentIndex - 1 + this.pages.length) % this.pages.length;
+                this.loadPage(prevIndex);
+            }
+        }
+        
+        // Initialize the page cycle manager when the page loads
+        let cycleManager;
+        window.addEventListener('DOMContentLoaded', () => {
+            cycleManager = new PageCycleManager();
+        });
+    </script>
+</body>
+</html>
